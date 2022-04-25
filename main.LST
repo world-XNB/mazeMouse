@@ -1,0 +1,571 @@
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: D:\Program Files\c51(keil4)\setup\C51\BIN\C51.EXE main.c COMPACT OPTIMIZE(8,SPEED) BROWSE DEBUG OBJ
+                    -ECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          bit irC=0,irL=0,irR=0,irLU=0,irRU=0;//¶¨ÒåºìÍâ´«¸ÐÆ÷¼ì²â×´Ì¬È«¾ÖÎ»±äÁ¿£¬Îª0ÎÞÕÏ°­
+   4          unsigned char counter_IR=1;
+   5          unsigned char code table[] = {0xc0,0xf9,0xa4,0xb0,0x99, 0x92,0x82,0xf8,0x80,0x90};//ÊýÂë¹ÜÓÃÀ´ÏÔÊ¾×ø±ê
+   6          unsigned char code forword[] = {0x11,0x93,0x82,0xc6,0x44,0x6c,0x28,0x39};//Ö±×ßÊý×é
+   7          unsigned char code positive[] = {0x11,0x33,0x22,0x66,0x44,0xcc,0x88,0x99};//Ë³Ê±Õë×ª-ÓÒ×ª
+   8          unsigned char code counter[] = {0x11,0x99,0x88,0xcc,0x44,0x66,0x22,0x33};//ÄæÊ±Õë×ª-×ó×ª
+   9          unsigned char l_absolute_direction=3,c_absolute_direction=3,relative_direction=0;//¾ø¶Ô·½ÏòºÍÏà¶Ô·½Ïò
+  10          //*******************************************************************×¼±¸²¿·Ö£ºÕ»£¬¶ÓÁÐ*******************
+             -****************************************
+  11          //maze
+  12          unsigned char maze[8][8];//µØÍ¼Êý×é
+  13          unsigned char step[8][8];//²½ÊýÊý×é
+  14          unsigned char mouse_x=0,mouse_y=0;//ÃÔ¹¬Êó×ø±ê
+  15          unsigned char count_step=0;       //²½Êý
+  16          void MOUSE_IR_ON(GROUP_NO) {//¿ªºìÍâº¯Êý
+  17   1        do{ 
+  18   2          A0=(GROUP_NO)&0x01;
+  19   2          A1=(GROUP_NO)&0x02; 
+  20   2          A2=(GROUP_NO)&0x04;
+  21   2          }while(0);
+  22   1      }
+  23          //stack
+  24          unsigned char  stack_x[40];   //½¨Á¢Õ»
+  25          unsigned char  stack_y[40];   //½¨Á¢Õ»
+  26          unsigned char  stack_top = 0; //Õ»¶¥
+  27          void push(unsigned char x,unsigned char y){//Èë¶Ó
+  28   1          stack_top++;
+  29   1          stack_x[stack_top] = x;  
+  30   1          stack_y[stack_top] = y;  
+  31   1      }
+  32          void pop(){//³ö¶Ó
+  33   1        stack_top--;
+  34   1      }
+  35          //queue
+  36          typedef struct{//×ø±ê½á¹¹Ìå
+  37              unsigned char x;
+  38              unsigned char y;
+  39          }coordinate;
+  40          coordinate queue[10];  //¶ÓÁÐÊý×é
+  41          coordinate move[4];    //·½ÏòÊý×é
+  42          unsigned char front=0,rear=0;      //¶ÓÍ·ºÍ¶ÓÎ²
+  43          void queue_in(unsigned char in_x,unsigned char in_y){//ÈëÕ»
+  44   1          queue[rear].x = in_x;
+  45   1          queue[rear].y = in_y;
+  46   1          rear=(rear+1)%10;
+  47   1      }
+  48          void queue_out(){//³öÕ»
+  49   1          front=(front+1)%10;
+  50   1      }
+  51          void move_int(){//³õÊ¼»¯ÓÃÀ´ÅÐ¶ÏÒ»¸ö¸ñ×ÓµÄËÄ¸ö·½Ïò
+  52   1          move[0].x = 1;
+  53   1          move[0].y = 0;
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 2   
+
+  54   1          move[1].x = 0;
+  55   1          move[1].y = -1;
+  56   1          move[2].x = -1;
+  57   1          move[2].y = 0;
+  58   1          move[3].x = 0;
+  59   1          move[3].y = 1;
+  60   1      }
+  61          //delay function
+  62          void delay_ms(unsigned int z){//ÑÓÊ±º¯Êý
+  63   1        unsigned char i,j;
+  64   1        while(--z){
+  65   2          _nop_();
+  66   2          i = 2;
+  67   2          j = 199;
+  68   2        }
+  69   1        do{
+  70   2          while(--j);
+  71   2        }while(--i);
+  72   1      }
+  73          //Infrared sensor-time2
+  74          void  Time2_init(){//¶¨Ê±Æ÷³õÊ¼»¯º¯Êý
+  75   1        EA=1;
+  76   1        ET2=1;
+  77   1        TH2=RCAP2H=(65536-7000)/256; 
+  78   1        TL2=RCAP2L=(65536-7000)%256;
+  79   1        TR2=1;
+  80   1      }
+  81          //*******************************************************************ÆäËûÇý¶¯²¿·Ö*************************
+             -****************************************
+  82          void beep_on(){//·äÃùÆ÷
+  83   1        Beep = 0;
+  84   1        delay_ms(10000);
+  85   1        Beep = 1;
+  86   1        delay_ms(10000);
+  87   1      }
+  88          void tube1_on(unsigned char x){//ÊýÂë¹Ü1
+  89   1        tube1 = 0;
+  90   1        tube2 = 1;
+  91   1        P0 = table[x];
+  92   1      }
+  93          void tube2_on(unsigned char x){//ÊýÂë¹Ü2
+  94   1        tube1 = 1;
+  95   1        tube2 = 0;
+  96   1        P0 = table[x];
+  97   1      }
+  98          
+  99          //*******************************************************************µç»úÇý¶¯²¿·Ö*************************
+             -****************************************
+ 100          void gostright(){//±éÀúÊ±µÄÖ±×ßº¯Êý£¬°üº¬¼ÇÂ¼ÐÅÏ¢
+ 101   1        unsigned char i,j;
+ 102   1        delay_ms(1500);//×ßÒ»²½ÑÓÊ±
+ 103   1        for(j=0;j<104;j++){ //jÓÃÀ´µ÷¾àÀë
+ 104   2            for(i=0;i<8;i++){
+ 105   3              P1=(forword[i]);
+ 106   3              delay_ms(80);
+ 107   3            }
+ 108   2          }
+ 109   1        update();
+ 110   1        maze[mouse_x][mouse_y] &= note_current();//¼ÇÂ¼ÃÔ¹¬Ç½µÄÐÅÏ¢
+ 111   1        maze[mouse_x][mouse_y] &= note_current();//¼ÇÂ¼ÃÔ¹¬Ç½µÄÐÅÏ¢
+ 112   1        note_direction();//¼ÇÂ¼À´µÄÂ·¾¶
+ 113   1        delay_ms(1500);//×ßÒ»²½ÑÓÊ±
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 3   
+
+ 114   1      }
+ 115          void backstright(){//»ØËÝÊ±Ö±×ßº¯Êý£¬Ö»Ö±×ß²»¼ÇÂ¼ÐÅÏ¢
+ 116   1        unsigned char i,j;
+ 117   1        for(j=0;j<104;j++){ //jÓÃÀ´µ÷¾àÀë
+ 118   2            for(i=0;i<8;i++){
+ 119   3              P1=(forword[i]);
+ 120   3              delay_ms(80);
+ 121   3            }
+ 122   2          }
+ 123   1        update();
+ 124   1        delay_ms(1500);//×ßÒ»²½ÑÓÊ±
+ 125   1      }
+ 126          void turnleft(){ //×ó×ª 
+ 127   1        unsigned char i,j;  //jÓÃÀ´µ÷¾àÀë
+ 128   1        delay_ms(1000);//×ßÒ»²½ÑÓÊ±
+ 129   1        TR2=0;
+ 130   1        for(j=0;j<50;j++){
+ 131   2          for(i=0;i<8;i++){
+ 132   3            P1=counter[i];
+ 133   3            delay_ms(20);
+ 134   3          }
+ 135   2        }
+ 136   1        c_absolute_direction = (l_absolute_direction+3)%4;//Ïà¶Ô·½Ïòµ½¾ø¶Ô·½ÏòµÄ×ª»»
+ 137   1        l_absolute_direction = c_absolute_direction;
+ 138   1        TR2=1;
+ 139   1        delay_ms(1000);//×ßÒ»²½ÑÓÊ±
+ 140   1      }
+ 141          void turnright(){//ÓÒ×ª 
+ 142   1        unsigned char i,j;  //jÓÃÀ´µ÷¾àÀë
+ 143   1        delay_ms(1000);//×ßÒ»²½ÑÓÊ±
+ 144   1        TR2=0;
+ 145   1        for(j=0;j<50;j++){
+ 146   2          for(i=0;i<8;i++){
+ 147   3            P1=positive[i];
+ 148   3            delay_ms(20);
+ 149   3          }
+ 150   2        }
+ 151   1        c_absolute_direction = (l_absolute_direction+1)%4;//Ïà¶Ô·½Ïòµ½¾ø¶Ô·½ÏòµÄ×ª»»
+ 152   1        l_absolute_direction = c_absolute_direction;
+ 153   1        TR2=1;
+ 154   1        delay_ms(1000);//×ßÒ»²½ÑÓÊ±
+ 155   1      }
+ 156          //*******************************************************************¹¦ÄÜº¯Êý²¿·Ö*************************
+             -****************************************
+ 157          void maze_init(){//µØÍ¼Êý×é³õÊ¼»¯
+ 158   1        unsigned char i,j;
+ 159   1        for(i=0;i<8;i++){
+ 160   2          for(j=0;j<8;j++)
+ 161   2            maze[i][j] = 0xff;
+ 162   2        }
+ 163   1      }
+ 164          void step_init(){//²½Êýº¯Êý³õÊ¼»¯
+ 165   1        unsigned char i,j;
+ 166   1        for(i=0;i<8;i++){
+ 167   2          for(j=0;j<8;j++)
+ 168   2            step[i][j] = 70;
+ 169   2        }
+ 170   1      }
+ 171          unsigned char note_current(){//µ±Ç°ÃÔ¹¬¸ñÇ½µÄÐÅÏ¢->µÍËÄÎ» £º0±íÊ¾Ã»ÓÐµ²°å£¬1±íÊ¾ÓÐµ²°å(¸ßËÄÎ»´ËÊ±Îª1)
+ 172   1        unsigned char current;
+ 173   1        switch(c_absolute_direction){
+ 174   2          case 0: if(irC==1&&irR==1&&irL==1)//ËÀÂ·
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 4   
+
+ 175   2                    current = 0x0d;
+ 176   2                  else if(irC==0&&irR==1&&irL==1)//Ç°±ßÎÞÕÏ°­
+ 177   2                    current = 0x05;
+ 178   2                  else if(irC==0&&irR==1&&irL==0)//Ç°±ßºÍ×ó±ßÎÞÕÏ°­
+ 179   2                    current = 0x04;
+ 180   2                  else if(irC==0&&irR==0&&irL==1)//Ç°±ßºÍÓÒ±ßÎÞÕÏ°­
+ 181   2                    current = 0x01;
+ 182   2                  else if(irC==1&&irR==0&&irL==1)//ÓÒ±ßÎÞÕÏ°­
+ 183   2                    current = 0x09;
+ 184   2                  else if(irC==1&&irR==1&&irL==0)//×ó±ßÎÞÕÏ°­
+ 185   2                    current = 0x0c;
+ 186   2                  else if(irC==1&&irR==0&&irL==0)//ÓÒ±ßºÍ×ó±ßÎÞÕÏ°­
+ 187   2                    current = 0x08;
+ 188   2                  else if(irC==0&&irR==0&&irL==0)//Èý±ßÎÞÕÏ°­
+ 189   2                    current = 0x00;break;
+ 190   2          case 1: if(irC==1&&irR==1&&irL==1)//ËÀÂ·
+ 191   2                    current = 0x0e;
+ 192   2                  else if(irC==0&&irR==1&&irL==1)//Ç°±ßÎÞÕÏ°­
+ 193   2                    current = 0x0a;
+ 194   2                  else if(irC==0&&irR==1&&irL==0)//Ç°±ßºÍ×ó±ßÎÞÕÏ°­
+ 195   2                    current = 0x02;
+ 196   2                  else if(irC==0&&irR==0&&irL==1)//Ç°±ßºÍÓÒ±ßÎÞÕÏ°­
+ 197   2                    current = 0x08;
+ 198   2                  else if(irC==1&&irR==0&&irL==1)//ÓÒ±ßÎÞÕÏ°­
+ 199   2                    current = 0x0c;
+ 200   2                  else if(irC==1&&irR==1&&irL==0)//×ó±ßÎÞÕÏ°­
+ 201   2                    current = 0x06;
+ 202   2                  else if(irC==1&&irR==0&&irL==0)//ÓÒ±ßºÍ×ó±ßÎÞÕÏ°­
+ 203   2                    current = 0x04;
+ 204   2                  else if(irC==0&&irR==0&&irL==0)//Èý±ßÎÞÕÏ°­
+ 205   2                    current = 0x00;break;
+ 206   2          case 2: if(irC==1&&irR==1&&irL==1)//ËÀÂ·
+ 207   2                    current = 0x07;
+ 208   2                  else if(irC==0&&irR==1&&irL==1)//Ç°±ßÎÞÕÏ°­
+ 209   2                    current = 0x05;
+ 210   2                  else if(irC==0&&irR==1&&irL==0)//Ç°±ßºÍ×ó±ßÎÞÕÏ°­
+ 211   2                    current = 0x01;
+ 212   2                  else if(irC==0&&irR==0&&irL==1)//Ç°±ßºÍÓÒ±ßÎÞÕÏ°­
+ 213   2                    current = 0x04;
+ 214   2                  else if(irC==1&&irR==0&&irL==1)//ÓÒ±ßÎÞÕÏ°­
+ 215   2                    current = 0x04;
+ 216   2                  else if(irC==1&&irR==1&&irL==0)//×ó±ßÎÞÕÏ°­
+ 217   2                    current = 0x03;
+ 218   2                  else if(irC==1&&irR==0&&irL==0)//ÓÒ±ßºÍ×ó±ßÎÞÕÏ°­
+ 219   2                    current = 0x02;
+ 220   2                  else if(irC==0&&irR==0&&irL==0)//Èý±ßÎÞÕÏ°­
+ 221   2                    current = 0x00;break;
+ 222   2          case 3: if(irC==1&&irR==1&&irL==1)//ËÀÂ·
+ 223   2                    current = 0x0b;
+ 224   2                  else if(irC==0&&irR==1&&irL==1)//Ç°±ßÎÞÕÏ°­
+ 225   2                    current = 0x0a;
+ 226   2                  else if(irC==0&&irR==1&&irL==0)//Ç°±ßºÍ×ó±ßÎÞÕÏ°­
+ 227   2                    current = 0x08;
+ 228   2                  else if(irC==0&&irR==0&&irL==1)//Ç°±ßºÍÓÒ±ßÎÞÕÏ°­
+ 229   2                    current = 0x02;
+ 230   2                  else if(irC==1&&irR==0&&irL==1)//ÓÒ±ßÎÞÕÏ°­
+ 231   2                    current = 0x03;
+ 232   2                  else if(irC==1&&irR==1&&irL==0)//×ó±ßÎÞÕÏ°­
+ 233   2                    current = 0x09;
+ 234   2                  else if(irC==1&&irR==0&&irL==0)//ÓÒ±ßºÍ×ó±ßÎÞÕÏ°­
+ 235   2                    current = 0x01;
+ 236   2                  else if(irC==0&&irR==0&&irL==0)//Èý±ßÎÞÕÏ°­
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 5   
+
+ 237   2                    current = 0x00;break;
+ 238   2                }
+ 239   1        return current;
+ 240   1      }
+ 241          void note_direction(){//¼ÇÂ¼ÉÏÒ»¸öÃÔ¹¬¸ñµ½Õâ¸öÃÔ¹¬¸ñµÄ¾ø¶Ô·½Ïò ->¸ßËÄÎ»£º(0±íÊ¾´ÓÕâ¸ö·½ÏòÀ´,1±íÊ¾²»´ÓÕâ¸ö·
+             -½ÏòÀ´)
+ 242   1          step[mouse_x][mouse_y]=c_absolute_direction;
+ 243   1      }
+ 244          void update(){//×ø±êµÄË¢ÐÂ
+ 245   1        if(l_absolute_direction == 0)//ÃÔ¹¬¸ñ0
+ 246   1            mouse_x +=1;
+ 247   1        if(l_absolute_direction == 1)//ÃÔ¹¬¸ñ1
+ 248   1            mouse_y -=1;
+ 249   1        if(l_absolute_direction == 2)//ÃÔ¹¬¸ñ2
+ 250   1            mouse_x -=1;
+ 251   1        if(l_absolute_direction == 3)//ÃÔ¹¬¸ñ3
+ 252   1            mouse_y +=1;
+ 253   1      }
+ 254          unsigned char take_direction(){//È¡½øÈëµ±Ç°¸ñ×ÓÊ±µÄ·½Ïò¡ª¡ª>·½±ã»ØËÝ
+ 255   1        unsigned char direction;//´æ¸ßËÄÎ»µÄÐÅÏ¢
+ 256   1        direction=step[mouse_x][mouse_y];
+ 257   1        return direction;
+ 258   1      }
+ 259          unsigned char take_current(unsigned char x,unsigned char y,unsigned char i){//È¡µ±Ç°ÃÔ¹¬¶ÔÓ¦·½ÏòÊÇ·ñ¿ÉÒÔ×ß
+             -£¬Ã»ÓÐÇ½·µ»Ø1£¬ÓÐÇ½·µ»Ø0ÓÃÓÚ»ØËÝ
+ 260   1        unsigned char temp;
+ 261   1        temp = maze[x][y]&0x0f;
+ 262   1        switch(i){
+ 263   2          case 0:if(temp==0x00||temp==0x04||temp==0x02||temp==0x01||temp==0x03||temp==0x06||temp==0x05||temp==0x07
+             -)//0
+ 264   2                      return 1;
+ 265   2                 else
+ 266   2                      return 0;
+ 267   2          case 1:if(temp==0x00||temp==0x08||temp==0x02||temp==0x01||temp==0x09||temp==0x03||temp==0x0a||temp==0x0b
+             -)//1
+ 268   2                      return 1;
+ 269   2                 else
+ 270   2                      return 0;
+ 271   2          case 2:if(temp==0x00||temp==0x08||temp==0x04||temp==0x01||temp==0x0c||temp==0x09||temp==0x05||temp==0x0d
+             -)//2
+ 272   2                      return 1;
+ 273   2                  else
+ 274   2                      return 0;
+ 275   2          case 3:if(temp==0x00||temp==0x08||temp==0x04||temp==0x02||temp==0x0c||temp==0x06||temp==0x0a||temp==0x0e
+             -)//3
+ 276   2                      return 1;
+ 277   2                  else
+ 278   2                      return 0;
+ 279   2        }
+ 280   1      }
+ 281          //****************************************************************Ëã·¨£º±éÀú²¿·Ö**************************
+             -*****************************************
+ 282          unsigned char go_next(){//×ßÏÂÒ»²½£¬²¢·µ»Ø1ºÍ0ÊÇ·ñ¿É×ß
+ 283   1        switch(c_absolute_direction){
+ 284   2          case 0:if(irL==0&&step[mouse_x][mouse_y+1]==70){//×ó±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 285   3                   turnleft();gostright();
+ 286   3                  return 1;
+ 287   3                  }
+ 288   2                  else if(irC==0&&step[mouse_x+1][mouse_y]==70){//Ç°±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 289   3                   gostright();return 1;
+ 290   3                  }
+ 291   2                  else if(irR==0&&step[mouse_x][mouse_y-1]==70){//ÓÒ±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 6   
+
+ 292   3                    turnright();gostright();
+ 293   3                    return 1;
+ 294   3                  }
+ 295   2                  else 
+ 296   2                    return 0;
+ 297   2          case 1:if(irL==0&&step[mouse_x+1][mouse_y]==70){//×ó±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 298   3                   turnleft();gostright();
+ 299   3                   return 1;
+ 300   3                  }
+ 301   2                 else if(irC==0&&step[mouse_x][mouse_y-1]==70){//Ç°±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 302   3                   gostright();return 1;
+ 303   3                 }
+ 304   2                 else if(irR==0&&step[mouse_x-1][mouse_y]==70){//ÓÒ±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 305   3                    turnright();gostright();
+ 306   3                    return 1;
+ 307   3                  }
+ 308   2                 else
+ 309   2                   return 0;
+ 310   2          case 2:if(irL==0&&step[mouse_x][mouse_y-1]==70){//×ó±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 311   3                   turnleft();gostright();
+ 312   3                   return 1;
+ 313   3                  }
+ 314   2                 else if(irC==0&&step[mouse_x-1][mouse_y]==70){//Ç°±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 315   3                   gostright();return 1;
+ 316   3                 }
+ 317   2                 else if(irR==0&&step[mouse_x][mouse_y+1]==70){//ÓÒ±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 318   3                    turnright();gostright();
+ 319   3                    return 1;
+ 320   3                  } 
+ 321   2                 else 
+ 322   2                   return 0;
+ 323   2          case 3:if(irL==0&&step[mouse_x-1][mouse_y]==70){//×ó±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 324   3                   turnleft();gostright();
+ 325   3                   return 1;
+ 326   3                  }
+ 327   2                 else if(irC==0&&step[mouse_x][mouse_y+1]==70){//Ç°±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 328   3                   gostright();return 1;
+ 329   3                 }
+ 330   2                 else if(irR==0&&step[mouse_x+1][mouse_y]==70){//ÓÒ±ßÎÞÕÏ°­ÇÒÃ»ÓÐ×ß¹ý
+ 331   3                    turnright();gostright();
+ 332   3                    return 1;
+ 333   3                  } 
+ 334   2                 else 
+ 335   2                   return 0;
+ 336   2        }
+ 337   1      }
+ 338          void  navigate(){//Ñ°¼£º¯Êý
+ 339   1        unsigned char temp=0;
+ 340   1        while(1){
+ 341   2          if(go_next())//±éÀúº¯Êý
+ 342   2            ;//¿ÕÓï¾ä
+ 343   2          else{
+ 344   3            temp = take_direction()-l_absolute_direction;//ÓÃÓÚ×ªÍä
+ 345   3            if(temp == 0){
+ 346   4              turnright();
+ 347   4              turnright();
+ 348   4            }
+ 349   3            else if(temp==1)
+ 350   3              turnleft();     
+ 351   3            else if(temp==-1)
+ 352   3              turnright();
+ 353   3            else if(temp==3)
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 7   
+
+ 354   3              turnright();
+ 355   3            else if(temp==-3)
+ 356   3              turnleft();
+ 357   3          backstright();
+ 358   3          }
+ 359   2          if(mouse_x==0&&mouse_y==0){
+ 360   3            break;
+ 361   3          }
+ 362   2        }
+ 363   1      }
+ 364          //*****************************************************************Ëã·¨£º³å´Ì²¿·Ö*************************
+             -*****************************************
+ 365          void Contour_table(unsigned char start_x,unsigned char start_y){//Éú³ÉµÈ¸ß±í
+ 366   1          unsigned char c_x,c_y,x,y,i,y_n;
+ 367   1          move_int();step_init();
+ 368   1          maze[0][0]=0x0a;
+ 369   1          queue_in(start_x,start_y);
+ 370   1          step[start_x][start_y] = count_step;
+ 371   1          while (front!=rear){
+ 372   2              c_x = queue[front].x;
+ 373   2              c_y = queue[front].y;
+ 374   2              count_step=step[c_x][c_y]+1;
+ 375   2              for (i = 0; i < 4; i++){
+ 376   3                  x = c_x+move[i].x;
+ 377   3                  y = c_y+move[i].y;
+ 378   3                  y_n = take_current(c_x,c_y,i);
+ 379   3                  if(x>=0&&y>=0&&x<8&&y<8&&y_n&&step[x][y]>count_step){//ÅÐ¶ÏÏÂÒ»¸ö²½ÊýµÄÌõ¼þ
+ 380   4                        queue_in(x,y);
+ 381   4                        step[x][y]=count_step;
+ 382   4                  }
+ 383   3              }
+ 384   2              queue_out();
+ 385   2          }
+ 386   1      }
+ 387          void sprint(unsigned char end_x,unsigned char end_y){//³å´Ì
+ 388   1        unsigned char end,x,y,i,j,temp,s=0,y_n;
+ 389   1        //ÓÃÕ»´æ´¢×î¶ÌÂ·¾¶
+ 390   1        end=step[end_x][end_y];
+ 391   1        push(end_x,end_y);
+ 392   1        for(front=0;front<8;front++)
+ 393   1          for(rear=0;rear<8;rear++)
+ 394   1            for (i = 0; i < 4; i++) {
+ 395   2              x = end_x+move[i].x;
+ 396   2              y = end_y+move[i].y;
+ 397   2              y_n=take_current(end_x,end_y,i);
+ 398   2              if(x>=0&&y>=0&&x<=end_x&&y<=end_y){
+ 399   3                temp = end - step[x][y];
+ 400   3                if (temp==1&&y_n){
+ 401   4                    push(x, y);
+ 402   4                    end_x = x;
+ 403   4                    end_y = y;
+ 404   4                    end=step[end_x][end_y];
+ 405   4                    break;
+ 406   4                }
+ 407   3            }
+ 408   2          }
+ 409   1          
+ 410   1          //³å´Ì½×¶Î´ËÊ±Ð¡³µÏà¶Ô·½ÏòÓ¦¸ÃºÍ¾ø¶Ô·½ÏòÒ»ÖÂ
+ 411   1          while(stack_top>1){//³å´Ì½×¶Î
+ 412   2            i=stack_x[stack_top];
+ 413   2            j=stack_y[stack_top];
+ 414   2            pop();
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 8   
+
+ 415   2            end_x=stack_x[stack_top];
+ 416   2            end_y=stack_y[stack_top];
+ 417   2            if(end_y>j)
+ 418   2              s=3;
+ 419   2            else if(end_x<i)
+ 420   2              s=2;
+ 421   2            else if(end_y<j)
+ 422   2              s=1;
+ 423   2            else if(end_x>i)
+ 424   2              s=0;
+ 425   2            temp=s-c_absolute_direction;
+ 426   2            if(temp==1)
+ 427   2                turnright();      
+ 428   2            else if(temp==-1)
+ 429   2                turnleft();
+ 430   2            else if(temp==3)
+ 431   2                turnleft();
+ 432   2            else if(temp==-3)
+ 433   2                turnright();
+ 434   2            else if(temp==2){
+ 435   3                turnleft();
+ 436   3                turnleft();
+ 437   3            }
+ 438   2            else if(temp==-2){
+ 439   3                turnleft();
+ 440   3                turnleft();
+ 441   3            }
+ 442   2            backstright();
+ 443   2         }
+ 444   1      }
+ 445          void main(){
+ 446   1        Time2_init();
+ 447   1        maze_init();
+ 448   1        step_init();
+ 449   1        delay_ms(100000);
+ 450   1        navigate();
+ 451   1        Contour_table(0,0);
+ 452   1        sprint(7,7);
+ 453   1        while(1);
+ 454   1      }
+ 455          //**************************************************************¶¨Ê±Æ÷ÖÐ¶Ï²¿·Ö-ºìÍâ¼ì²â*******************
+             -*****************************************
+ 456          void Timer2_fix() interrupt 5 { //¶¨Ê±Æ÷ÖÐ¶Ïº¯Êý
+ 457   1        static bit ir = 0; //±êÖ¾±¾´ÎºìÍâÊÇ·¢Éä»¹ÊÇ½ÓÊÕ
+ 458   1        unsigned char i,j;
+ 459   1        TF2=0;
+ 460   1        tube1_on(mouse_x);
+ 461   1        tube2_on(mouse_y);
+ 462   1        if(!ir){
+ 463   2          MOUSE_IR_ON(counter_IR-1);
+ 464   2        }
+ 465   1        else {
+ 466   2          if(counter_IR==1){
+ 467   3            if(IR1)
+ 468   3              irC=0;
+ 469   3            else
+ 470   3              irC=1;
+ 471   3          }
+ 472   2          else if(counter_IR==3){
+ 473   3              if(IR3)
+ 474   3                irL=0;
+ 475   3              else
+C51 COMPILER V9.53.0.0   MAIN                                                              12/31/2020 11:17:49 PAGE 9   
+
+ 476   3                irL=1;
+ 477   3            }
+ 478   2          else if(counter_IR==4){
+ 479   3            if(IR4)
+ 480   3              irR=0;
+ 481   3            else
+ 482   3              irR=1;
+ 483   3          }
+ 484   2          else if(counter_IR==2){
+ 485   3              if(IR2)
+ 486   3                irLU=0;   
+ 487   3              else{
+ 488   4                irLU=1;
+ 489   4                for(j=0;j<4;j++){//×ËÌ¬µ÷Õû²¿·Ö
+ 490   5                  for(i=0;i<8;i++){
+ 491   6                    P1=positive[i];
+ 492   6                    delay_ms(3);
+ 493   6                  }
+ 494   5                }
+ 495   4              }
+ 496   3            }
+ 497   2          else if(counter_IR==5){
+ 498   3            if(IR5)
+ 499   3              irRU=0;
+ 500   3            else{
+ 501   4              irL=1;
+ 502   4              for(j=0;j<4;j++){//×ËÌ¬µ÷Õû²¿·Ö
+ 503   5                  for(i=0;i<8;i++){
+ 504   6                    P1=counter[i];
+ 505   6                    delay_ms(3);
+ 506   6                  }
+ 507   5                }
+ 508   4            }
+ 509   3          }
+ 510   2        }
+ 511   1        if(ir)
+ 512   1          counter_IR++;
+ 513   1        if(counter_IR>5)
+ 514   1          counter_IR=1;
+ 515   1        ir=~ir;
+ 516   1      }
+*** WARNING C291 IN LINE 280 OF main.c: not every exit path returns a value
+*** WARNING C291 IN LINE 337 OF main.c: not every exit path returns a value
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2521    ----
+   CONSTANT SIZE    =     34    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =    246       9
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      6    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  2 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,4 @@
+"STARTUP.obj",
+"main.obj" 
+TO "maze_mouse1" 
+RAMSIZE(256) 
